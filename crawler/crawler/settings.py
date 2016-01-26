@@ -11,10 +11,16 @@ https://docs.djangoproject.com/en/1.8/ref/settings/
 """
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+import logging
 import os
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+file_path = os.path.dirname(os.path.realpath(__file__)).replace('\\', '/').split('/')
+file_path = filter(lambda s: s != '', file_path)
 
+BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_NAME = 'crawler'
+PROJECT_INSTANCE = file_path[-2]
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.8/howto/deployment/checklist/
@@ -26,7 +32,6 @@ SECRET_KEY = '$fv=2%#9#1o_qv=3+#ym2uw4-c5*kqf@16n$kky9fl%j@)5kdm'
 DEBUG = True
 
 ALLOWED_HOSTS = []
-
 
 # Application definition
 
@@ -71,7 +76,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'crawler.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/1.8/ref/settings/#databases
 
@@ -81,7 +85,6 @@ DATABASES = {
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
 }
-
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.8/topics/i18n/
@@ -96,8 +99,51 @@ USE_L10N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.8/howto/static-files/
 
 STATIC_URL = '/static/'
+
+LOGGING = {
+    # handlers can be: null, console, mail_admin
+    'loggers': {
+        '': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+        },
+        '%s' % PROJECT_INSTANCE: {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+        'django.request': {
+            'handlers': ['console'],
+            # 'filters': ['require_debug_false'], # means when debug set to false do logging
+            'level': 'WARNING',
+        },
+        # For performance reasons, SQL logging is only enabled when settings.DEBUG is set to True
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+        },
+    }
+}
+LOGGING.update({
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'null': {
+            'level': 'DEBUG',
+            'class': 'django.utils.log.NullHandler',
+        },
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+        },
+        'mail_admin': {
+            'level': 'ERROR',
+            'class': 'django.utils.log.AdminEmailHandler',
+            'include_html': True,
+        },
+    },
+})
+logger = logging.getLogger(PROJECT_INSTANCE)  # the default logger, to encourage use of loggers!
