@@ -2,3 +2,6 @@ tqdm
 bs4
 Django<1.9
 requests
+networkx
+plotly
+pygraphviz
