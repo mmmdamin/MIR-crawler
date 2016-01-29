@@ -9,8 +9,8 @@ from tqdm import tqdm
 from crawler.draw import draw_graph
 from crawler.queue import SetQueue
 
-START_COUNT = 10
-MAX_COUNT = 10
+START_COUNT = 1000
+MAX_COUNT = 1000
 MAX_CITED_IN = 10
 MAX_REFERENCE = 10
 ARTICLE_PATH = "articles/{}.json"

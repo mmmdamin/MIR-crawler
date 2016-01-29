@@ -1,7 +1,5 @@
 from django.shortcuts import render
 
-import crawl
-
 
 def home(request):
     return render(request, 'home.html', {
@@ -9,5 +7,7 @@ def home(request):
     })
 
 
-def crawl_site():
-    crawl.main()
+def search(request):
+    return render(request, 'home.html', {
+
+    })
