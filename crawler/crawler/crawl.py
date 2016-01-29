@@ -77,7 +77,10 @@ def parse_article(link):
     try:
         abstract = soup.find('div', attrs={'class': 'pub-abstract'}).find('div').find('div').text
     except AttributeError:
-        abstract = soup.find('div', attrs={'class': 'publication-abstract-text'}).text
+        try:
+            abstract = soup.find('div', attrs={'class': 'publication-abstract-text'}).text
+        except:
+            abstract = ""
 
     authors = []
     try:

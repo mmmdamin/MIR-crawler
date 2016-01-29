@@ -1,22 +1,24 @@
 import collections
 import json
-import os
-from pprint import pprint
 import math
+import os
 import random
 import sys
+
+import requests
+from tqdm import tqdm
 
 articles_path = '../crawler/articles'
 articles = []
 titles = {}
 abstracts = {}
 for article_name in os.listdir(articles_path):
-    with open(os.path.join(articles_path, article_name), 'r') as f:
-        x = f.read()
-        article = json.loads(x)
-    articles.append(article)
-    abstracts[article['id']] = collections.Counter(x.lower() for x in article.get('abstract').split())
-    titles[article.get('id')] = collections.Counter(x.lower() for x in article.get('title').split())
+    x = requests.get('http://127.0.0.1:9200/articles/article/{}'.format(article_name.split('.')[0]))
+    article = json.loads(x.text).get('_source')
+    if article:
+        articles.append(article)
+        abstracts[article['id']] = collections.Counter(x.lower() for x in article.get('abstract').split())
+        titles[article.get('id')] = collections.Counter(x.lower() for x in article.get('title').split())
 
 MAX_LEVEL = 100
 CLUSTER_NUM = 3
@@ -114,9 +116,9 @@ def p(docs_field, kc, kt):
     n_1 = n01 + n11
     n_0 = n00 + n10
     return ((n11 * math.log(((n11 * n) / (n1_ * n_1 + 0.1)) + 0.1, 2)) + (
-    n01 * math.log((n01 * n / (n0_ * n_1 + 0.1)) + 0.1, 2)) +
+        n01 * math.log((n01 * n / (n0_ * n_1 + 0.1)) + 0.1, 2)) +
             (n00 * math.log((n00 * n / (n0_ * n_0 + 0.1)) + 0.1, 2)) + (
-            n10 * math.log((n10 * n / (n1_ * n_0 + 0.1)) + 0.1, 2)) / n)
+                n10 * math.log((n10 * n / (n1_ * n_0 + 0.1)) + 0.1, 2)) / n)
 
 
 ABSTRACT_LABEL_LEN = 30
