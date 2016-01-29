@@ -5,7 +5,6 @@ import bs4
 import requests
 import sys
 from tqdm import tqdm
-
 from crawler.draw import draw_graph
 from crawler.queue import SetQueue
 
@@ -78,7 +77,7 @@ def parse_article(link):
     try:
         abstract = soup.find('div', attrs={'class': 'pub-abstract'}).find('div').find('div').text
     except AttributeError:
-        abstract = soup.find('div', attrs={'class': 'publication-abstract-text'})
+        abstract = soup.find('div', attrs={'class': 'publication-abstract-text'}).text
 
     authors = []
     try:
@@ -97,7 +96,7 @@ def parse_article(link):
 
     params = {
         'publicationUid': pub_uid,
-        'limit': 10000,
+        'limit': 1000,
         'dbw': False,
         'showContexts': False,
         'showCitationsSorter': False,
