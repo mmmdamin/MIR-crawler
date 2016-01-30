@@ -32,6 +32,11 @@ def search(request):
                             "query": q,
                             "boost": kw
                         }}},
+                    {"match": {
+                        "author": {
+                            "query": q,
+                            "boost": aw
+                        }}},
                 ]
             },
         },
