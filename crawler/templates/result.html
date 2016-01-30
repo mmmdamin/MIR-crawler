@@ -40,7 +40,6 @@
         margin: 0;
         outline: none;
         padding: 0;
-        -webkit-appearance: none;
     }
 
     input[type="search"] {
@@ -148,7 +147,12 @@
             <input type="search" name="kweight" value="{{ kw }}" placeholder="abstract" class="fp-input"/>
             <input type="search" name="aweight" value="{{ aw }}" placeholder="author" class="fp-input"/>
             <input type="submit" value="BeHavij!" class="button">
+            <br>
 
+            <h3>clusters:</h3>
+            {% for cluster, v in clusters.items %}
+                <input type="checkbox" name="cluster" value="{{ cluster }}" title="{{ v.2 }}"/>{{ v.1 }}<br/>
+            {% endfor %}
 
         </form>
 
@@ -158,6 +162,8 @@
             <a href="https://researchgate.net/{{ hit.fields.link.0 }}" target="_blank" style="color: orangered">
                 <h2>{{ hit.fields.id.0 }} - {{ hit.fields.title.0 }}</h2></a>
             <small>score: {{ hit.score }}</small>
+            <br>
+            <small>page rank: {{ hit.page_rank }}</small>
             <p>{% for author in hit.fields.author %}{{ author }}<br>{% endfor %}</p>
 
             <p>

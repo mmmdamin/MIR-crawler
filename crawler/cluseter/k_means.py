@@ -2,35 +2,40 @@ import collections
 import json
 import math
 import os
-import random
+import nltk
 import sys
-
-import requests
+from elasticsearch import Elasticsearch, NotFoundError
 from tqdm import tqdm
-
 from cluseter import termgraph
+
+es = Elasticsearch([{'host': 'localhost', 'port': 9200}])
 
 articles_path = '../crawler/articles'
 articles = []
 titles = {}
 abstracts = {}
+dictionary = {}
+stop_words = set(nltk.corpus.stopwords.words('english'))
+
 for article_name in os.listdir(articles_path):
-    x = requests.get('http://127.0.0.1:9200/articles/article/{}'.format(article_name.split('.')[0]))
-    article = json.loads(x.text).get('_source')
-    if article:
+    try:
+        article = es.get_source(index="rg", doc_type="article", id=int(article_name.split(".")[0]))
         articles.append(article)
-        abstracts[article['id']] = collections.Counter(x.lower() for x in article.get('abstract').split())
-        titles[article.get('id')] = collections.Counter(x.lower() for x in article.get('title').split())
+        abstracts[article['id']] = collections.Counter(
+            x for x in nltk.word_tokenize(article.get('abstract').lower()) if x not in stop_words)
+        titles[article.get('id')] = collections.Counter(
+            x for x in nltk.word_tokenize(article.get('title').lower()) if x not in stop_words)
+    except NotFoundError:
+        pass
+for doc in abstracts.values():
+    for t, v in doc.iteritems():
+        dictionary[t] = max(dictionary.get(t), v)
 
 
 def calc_clusters(cluster_num):
     MAX_LEVEL = 5
-    dictionary = {}
     mean = [{} for cnum in range(cluster_num)]
     cl = []
-    for doc in abstracts.values():
-        for t, v in doc.iteritems():
-            dictionary[t] = max(dictionary.get(t), v)
 
     def distance(doc1, doc2):
         doc1_abs = abstracts[doc1]
@@ -78,62 +83,86 @@ def calc_clusters(cluster_num):
                         mean[i].update({k: mean[i].get(k, 0) + float(value) / len(item)})
             make_clusters()
 
-    def p(docs_field, kc, kt):
-        n11 = 0
-        n01 = 0
-        n10 = 0
-        n00 = 0
-
-        for ind, c in enumerate(cl):
-            for d in c:
-                doc = docs_field.get(d)
-                if ind == kc:
-                    if doc.get(kt):
-                        n11 += 1
-                    else:
-                        n10 += 1
-                else:
-                    if doc.get(kt):
-                        n01 += 1
-                    else:
-                        n00 += 1
-
-        n = len(docs_field)
-        n1_ = n10 + n11
-        n0_ = n00 + n01
-        n_1 = n01 + n11
-        n_0 = n00 + n10
-        return ((n11 * math.log(((n11 * n) / (n1_ * n_1 + 0.1)) + 0.1, 2)) + (
-            n01 * math.log((n01 * n / (n0_ * n_1 + 0.1)) + 0.1, 2)) +
-                (n00 * math.log((n00 * n / (n0_ * n_0 + 0.1)) + 0.1, 2)) + (
-                    n10 * math.log((n10 * n / (n1_ * n_0 + 0.1)) + 0.1, 2)) / n)
-
-    ABSTRACT_LABEL_LEN = 30
-    TITLE_LABEL_LEN = 3
-
-    def labeling(docs_field, num):
-        import operator
-
-        r = []
-        for kc, c in enumerate(cl):
-            pt = {}
-            for term in dictionary.keys():
-                pt[term] = p(docs_field, kc, term)
-            sorted_pt = sorted(pt.items(), key=operator.itemgetter(1))
-            r.append(list(reversed(sorted_pt))[:num])
-        return ["".join(x[0] + " " for x in z) for z in r]
-
     k_means()
-    return cal_j()
+    return cal_j(), cl
 
 
-labels = []
-data = []
-total = len(articles)
-with tqdm(total=total, desc="Plotting...", file=sys.stdout) as pbar:
-    for i in range(1, total + 1, 1):
-        labels.append("%4d" % i)
-        j = calc_clusters(i)
-        data.append(j)
-        pbar.update(1)
-termgraph.main(labels, data)
+def p(docs_field, kc, kt, clusters):
+    n11 = 0
+    n01 = 0
+    n10 = 0
+    n00 = 0
+
+    for ind, c in enumerate(clusters):
+        for d in c:
+            doc = docs_field.get(d)
+            if ind == kc:
+                if doc.get(kt):
+                    n11 += 1
+                else:
+                    n10 += 1
+            else:
+                if doc.get(kt):
+                    n01 += 1
+                else:
+                    n00 += 1
+
+    n = len(docs_field)
+    n1_ = n10 + n11
+    n0_ = n00 + n01
+    n_1 = n01 + n11
+    n_0 = n00 + n10
+    return ((n11 * math.log(((n11 * n) / (n1_ * n_1 + 0.1)) + 0.1, 2)) + (
+        n01 * math.log((n01 * n / (n0_ * n_1 + 0.1)) + 0.1, 2)) +
+            (n00 * math.log((n00 * n / (n0_ * n_0 + 0.1)) + 0.1, 2)) + (
+                n10 * math.log((n10 * n / (n1_ * n_0 + 0.1)) + 0.1, 2)) / n)
+
+
+ABSTRACT_LABEL_LEN = 30
+TITLE_LABEL_LEN = 3
+
+
+def labeling(docs_field, num, clusters):
+    import operator
+
+    r = []
+    for kc, c in enumerate(clusters):
+        pt = {}
+        for term in dictionary.keys():
+            pt[term] = p(docs_field, kc, term, clusters)
+        sorted_pt = sorted(pt.items(), key=operator.itemgetter(1))
+        r.append(list(reversed(sorted_pt))[:num])
+    return ["".join(x[0] + " " for x in z) for z in r]
+
+
+def main(k=None):
+    labels = []
+    data = []
+    total = len(articles)
+    old_j = 0
+    new_j = None
+    my_clusters = None
+    if not k:
+        with tqdm(total=total, desc="Plotting...", file=sys.stdout) as pbar:
+            for i in range(1, total + 1, 1):
+                labels.append("%4d" % i)
+                new_j, my_clusters = calc_clusters(i)
+                data.append(new_j)
+                if abs(new_j - old_j) < 0.1:
+                    break
+                old_j = new_j
+
+                pbar.update(1)
+        termgraph.main(labels, data)
+    else:
+        new_j, my_clusters = calc_clusters(k)
+    clusters = {}
+    title_labels = labeling(titles, TITLE_LABEL_LEN, my_clusters)
+    abs_labels = labeling(abstracts, ABSTRACT_LABEL_LEN, my_clusters)
+    for ix, my_cluster in enumerate(my_clusters):
+        clusters.update({ix: (my_cluster, title_labels[ix], abs_labels[ix])})
+    return clusters
+
+
+with open("../crawler/x.json", "w") as f:
+    f.write(json.dumps(main(k=5)))
