@@ -1,11 +1,10 @@
 import json
 import pprint
-
 import requests
+from elasticsearch import Elasticsearch
 from django.shortcuts import render
 
-elastic_search_url = "http://localhost:9200/articles/_search"
-elastic_search_article_url = "http://localhost:9200/articles/article/{}"
+es = Elasticsearch([{'host': 'localhost', 'port': 9200}])
 
 
 def home(request):
@@ -16,14 +15,36 @@ def home(request):
 
 def search(request):
     q = request.GET.get('search')
-    r = requests.get(elastic_search_url, {
-        'q': q,
-        '_source': False,
-        'fields': "title,id,abstract",
+    tw = request.GET.get('tweight') or 1
+    kw = request.GET.get('kweight') or 1
+    aw = request.GET.get('aweight') or 1
+    hits = es.search(index="rg", body={
+        "query": {
+            "bool": {
+                "should": [
+                    {"match": {
+                        "title": {
+                            "query": q,
+                            "boost": tw
+                        }}},
+                    {"match": {
+                        "abstract": {
+                            "query": q,
+                            "boost": kw
+                        }}},
+                ]
+            },
+        },
+        "_source": False,
+        "fields": ["title", "abstract", "author", "id", "link"]
     })
-    hits = json.loads(r.text).get('hits').get('hits')
-    print hits[0]['fields']
+    hits = hits.get('hits').get('hits')
+    for h in hits:
+        h.update({'score': h.get('_score')})
     return render(request, 'result.html', {
         'title': q,
-        'hits': hits
+        'hits': hits,
+        'tw': tw,
+        'kw': kw,
+        'aw': aw,
     })

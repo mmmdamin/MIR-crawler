@@ -144,9 +144,9 @@
             <input type="search" name="search" value="{{ title }}">
             <!-- JS because of IE support; better: placeholder="What are you looking for?" -->
 
-            <input type="search" name="tweight" placeholder="title" class="fp-input"/>
-            <input type="search" name="kweight" placeholder="abstract" class="fp-input"/>
-            <input type="search" name="aweight" placeholder="author" class="fp-input"/>
+            <input type="search" name="tweight" value="{{ tw }}" placeholder="title" class="fp-input"/>
+            <input type="search" name="kweight" value="{{ kw }}" placeholder="abstract" class="fp-input"/>
+            <input type="search" name="aweight" value="{{ aw }}" placeholder="author" class="fp-input"/>
             <input type="submit" value="BeHavij!" class="button">
 
 
@@ -155,14 +155,22 @@
     </div> <!-- end search -->
     {% for hit in hits %}
         <div style="margin: 10px">
-            <h2>{{ hit.fields.id.0 }} - {{ hit.fields.title.0 }}</h2>
+            <a href="https://researchgate.net/{{ hit.fields.link.0 }}" target="_blank" style="color: orangered">
+                <h2>{{ hit.fields.id.0 }} - {{ hit.fields.title.0 }}</h2></a>
+            <small>score: {{ hit.score }}</small>
+            <p>{% for author in hit.fields.author %}{{ author }}<br>{% endfor %}</p>
 
             <p>
                 {{ hit.fields.abstract.0 }}
             </p>
             <hr style="border-color: orange">
         </div>
+    {% empty %}
+        <div>
+            <h1>No Results Found! :(</h1>
+        </div>
     {% endfor %}
+
 
 </div> <!-- end container -->
 </body>

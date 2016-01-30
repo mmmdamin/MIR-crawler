@@ -17,7 +17,6 @@ BASE_URL = "https://www.researchgate.net/"
 
 q = SetQueue()
 articles = []
-all_authors = {}
 start_urls = [
     "publication/285458515_A_General_Framework_for_Constrained_Bayesian_Optimization_using_Information-based_Search",
     "publication/284579255_Parallel_Predictive_Entropy_Search_for_Batch_Global_Optimization_of_Expensive_Objective_Functions",
@@ -39,11 +38,16 @@ def main():
     for link in start_urls:
         q.put(link)
 
+    done = set()
+
     with tqdm(file=sys.stdout, total=MAX_COUNT, desc=blue_color + "Crawling", unit="doc") as pbar:
         while not q.empty() and len(articles) < MAX_COUNT:
-            article = parse_article(q.get_nowait())
+            link = q.get_nowait()
+            article = parse_article(link)
             articles.append(article)
-            pbar.update(1)
+            if link not in done:
+                pbar.update(1)
+                done.add(link)
 
             with open(ARTICLE_PATH.format(article.get('id')), 'w') as outfile:
                 json.dump(article, outfile)
@@ -87,15 +91,13 @@ def parse_article(link):
         authors_div = soup.find('div', attrs={'class': 'publication-detail-author-list'}) \
             .find_all('a', attrs={'class': 'pub-detail-item author-item'})
         for a in authors_div:
-            author_id = int(a.get('href').split('_')[0].split('/')[1])
-            all_authors[author_id] = a.find('div', attrs={'class': 'people-img'}).find('img').get('title')
-            authors.append(author_id)
+            author_name = a.find('div', attrs={'class': 'people-img'}).find('img').get('title')
+            authors.append(author_name)
     except AttributeError:
         authors_list = soup.find('div', attrs={'class': 'publication-author-list'}) \
             .find_all('a', attrs={'class': 'publication-author-name'})
         for a in authors_list:
             authors.append(a.text)
-            print(link, authors)
 
     params = {
         'publicationUid': pub_uid,
@@ -140,6 +142,7 @@ def parse_article(link):
     article['title'] = title
     article['author'] = authors
     article['abstract'] = abstract
+    article['link'] = link
     article['citedIn'] = cited_in
     article['reference'] = reference
     article['reference_url'] = reference_url
