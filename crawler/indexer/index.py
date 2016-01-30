@@ -18,5 +18,4 @@ for article_name in tqdm(os.listdir(articles_path), desc=yellow_color + "Indexin
         r = requests.put(elastic_search_url.format(article.get('id')), x, headers={
             'Content-Type': 'application/json'
         })
-        sleep(0.3)
 print(red_color + "Indexing finished!")
